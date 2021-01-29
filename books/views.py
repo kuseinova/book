@@ -1,23 +1,36 @@
 from datetime import timedelta
 
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils import timezone
 from django.views import View
 from django_filters.rest_framework import DjangoFilterBackend
 from requests import Response
-from rest_framework import generics, serializers
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework import generics, serializers, status, permissions
+from rest_framework.decorators import action
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, CreateAPIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 
 from books.filters import BookFilter
-from books.models import Book, Favorites, Ratings
-from books.serializers import BookAPISerializer, FavoritesAPISerializer, RatingSerializer
+from books.models import Book, Favorites, Ratings, Comment
+from books.serializers import BookAPISerializer, FavoritesAPISerializer, RatingSerializer, CommentSerializer, \
+    BookSerializer
+from books.utils import send_activation_email
+from order.models import Ordered
+from books.permissions import IsAuthorOrReadOnly
+
+
+
+# class MyPagination(PageNumberPagination):
+#     page_size = 1
 
 
 class BookListApiView(ListCreateAPIView):
     queryset = Book.objects.filter(active=True)
     serializer_class = BookAPISerializer
+    # pagination_class = MyPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = BookFilter
 
@@ -65,13 +78,27 @@ class BookListApiView(ListCreateAPIView):
         id = serializer.data['id']
         user = serializer.data['publisher']
         title = serializer.data['title']
-        send_book_activation_email(id, title)
+        send_activation_email(id, title)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED,
                         headers=headers)
 
+    @action(methods=['get'], detail=False)
+    def search(self, request):
+        q = request.query_params.get('q')
+        queryset = self.get_queryset()
+        if q is not None:
+            queryset = queryset.filter(Q(title__icontains=q) |
+                                       Q(description__icontains=q))
+        serializer = BookSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
 
 class BookDetailApiView(RetrieveUpdateDestroyAPIView):
+
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
     queryset = Book.objects.all()
     serializer_class = BookAPISerializer
 
@@ -90,6 +117,8 @@ class ActivationView(View):
 
 
 class FavoritesListApiView(generics.ListCreateAPIView):
+
+    permission_classes = (IsAuthorOrReadOnly,)
     serializer_class = FavoritesAPISerializer
 
     def get_queryset(self):
@@ -112,6 +141,8 @@ class FavoritesListApiView(generics.ListCreateAPIView):
 
 class FavoriteAdd(APIView):
 
+    permission_classes = (IsAuthorOrReadOnly,)
+
     def get(self, request, pk):
         book = Book.objects.get(pk=pk)
         user = request.user
@@ -124,7 +155,7 @@ class FavoriteAdd(APIView):
 
 
 class FavoriteDelete(APIView):
-
+    permission_classes = (IsAuthorOrReadOnly,)
     def get(self, request, pk):
         user = request.user
         favor = Favorites.objects.filter(user=user.pk, book=pk)
@@ -135,6 +166,8 @@ class FavoriteDelete(APIView):
 
 
 class RatingCreate(generics.CreateAPIView):
+
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
     serializer_class = RatingSerializer
 
     def post(self, request, *args, **kwargs):
@@ -171,3 +204,14 @@ class RatingCreate(generics.CreateAPIView):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED,
                         headers=headers)
+
+
+
+class CommentCreate(CreateAPIView):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+

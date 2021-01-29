@@ -1,12 +1,15 @@
 from django.shortcuts import render
-from rest_framework import generics, serializers
+from rest_framework import generics, serializers, permissions
 
 from books.models import Book
 from order.models import Order, Ordered
 from order.serializers import OrderCreateSerializer, OrderDetailSerializer
 
+from rest_framework import generics
 
 class OrderCreateView(generics.ListCreateAPIView):
+
+    permission_classes = (permissions.IsAuthenticated,)
     queryset = Order.objects.all()
 
     def get_serializer_class(self):

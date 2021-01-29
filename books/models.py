@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
+from books.serializers import CommentSerializer
 from category.models import Category
 
 User = get_user_model()
@@ -9,7 +10,7 @@ User = get_user_model()
 
 def poster_upload_to(instance, filename):
     return 'posters/{0}/{1} - {2}'.format(
-        instance.publisher.fullname, instance.title, filename
+        instance.publisher.username, instance.title, filename
     )
 
 
@@ -28,7 +29,15 @@ class Book(models.Model):
     active = models.BooleanField(default=False)
 
     def __str__(self):
-        return f'{self.title} - {self.author} ---> {self.publisher.fullname}'
+        return f'{self.title} - {self.author} ---> {self.publisher.username}'
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['image'] = self._get_image_url(instance)
+        representation['categories'] = CategorySerializer(instance.categories.all(), many=True).data
+        representation['comments'] = CommentSerializer(instance.comments.all(), many=True).data
+        return representation
+
 
 
 class Favorites(models.Model):
@@ -50,6 +59,19 @@ class Ratings(models.Model):
         return f'{self.rating} - {self.book} --> {self.user}'
 
 
+class Comment(models.Model):
+    product = models.ForeignKey(Book,
+                                related_name='comments',
+                                on_delete=models.CASCADE
+                                )
+    text = models.TextField(max_length=400)
+    author = models.ForeignKey(get_user_model(),
+                               on_delete=models.CASCADE,
+                               related_name='comments',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return f'Comment by {self.author} on {self.product}, created at {self.created_at}'
 
 

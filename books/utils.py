@@ -6,7 +6,7 @@ def send_activation_email(user):
     subject = 'Thank you for registration.'
     body = 'Thank you for registration on our site.\n' \
            'For activation link this :\n'\
-           f'http:localhost:8000/v1/account/activate/{user.activation_code}/'
+           f'http:http://127.0.0.1:8000/api/v1/account/activate/{user.activation_code}/'
     from_email = 'djnago@django.kg'
     recipients = [user.email]
     send_mail(subject=subject, message=body, from_email=from_email, recipient_list=recipients, fail_silently=False)

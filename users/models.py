@@ -60,3 +60,8 @@ class User(AbstractBaseUser):
 
     def has_module_perms(self, app_label):
         return self.is_superuser
+
+    # def get_full_name(self):
+    #     full_name = '%s %s' % (self.first_name, self.last_name)
+    #     return full_name.strip()
+
