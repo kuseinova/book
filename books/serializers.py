@@ -53,9 +53,9 @@ class BookSerializer(serializers.ModelSerializer):
             return url
         return ''
 
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation['image'] = self._get_image_url(instance)
-        representation['categories'] = CategoryAPISerializer(instance.categories.all(), many=True).data
-        representation['comments'] = CommentSerializer(instance.comments.all(), many=True).data
-        return representation
+    # def to_representation(self, instance):
+    #     representation = super().to_representation(instance)
+    #     representation['image'] = self._get_image_url(instance)
+    #     representation['categories'] = CategoryAPISerializer(instance.categories.all(), many=True).data
+    #     representation['comments'] = CommentSerializer(instance.comments.all(), many=True).data
+    #     return representation

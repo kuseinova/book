@@ -2,7 +2,6 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
-from books.serializers import CommentSerializer
 from category.models import Category
 
 User = get_user_model()
@@ -28,15 +27,9 @@ class Book(models.Model):
     rating = models.DecimalField(decimal_places=2, max_digits=10, null=True)
     active = models.BooleanField(default=False)
 
+
     def __str__(self):
         return f'{self.title} - {self.author} ---> {self.publisher.username}'
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation['image'] = self._get_image_url(instance)
-        representation['categories'] = CategorySerializer(instance.categories.all(), many=True).data
-        representation['comments'] = CommentSerializer(instance.comments.all(), many=True).data
-        return representation
 
 
 
